@@ -21,8 +21,20 @@
             border-radius: 8px;
             padding: 20px;
         }
-        .table-dark {
+         .table-dark {
             background-color: #1e1e1e;
+        }
+        footer {
+            background-color: #1e1e1e;
+            padding: 10px;
+            text-align: center;
+            color: #ffffff;
+            font-size: 1.2rem;
+            margin-top: 50px;
+        }
+        .highlight {
+            color: #ffcc00;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -53,7 +65,7 @@
 
         <!-- Login Section -->
         <div class="card d-none" id="loginSection">
-            <h3 class="text-center mb-4">Secure Data Manager</h3>
+            <h3 class="text-center mb-4">Login To Secure Data </h3>
             <form id="loginForm">
                 <div class="mb-3">
                     <label for="username" class="form-label">Username</label>
@@ -72,7 +84,7 @@
 
         <!-- Data Section -->
         <div class="card d-none" id="dataSection">
-            <h3 class="text-center mb-4">Your Secure Data</h3>
+            <h3 class="text-center mb-4">Insert Your Data Here !</h3>
             <div class="mb-3">
                 <input type="text" id="newRow" class="form-control" placeholder="New Row Data (comma-separated)">
             </div>
@@ -85,6 +97,8 @@
                     <tr>
                         <th>#</th>
                         <th>Data</th>
+                        <th>Date Added</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="dataTableBody"></tbody>
@@ -141,23 +155,39 @@
 
         // Function to save user-specific data to localStorage
         const saveData = (username, data) => {
-            const storedData = getStoredData(username); // Retrieve current data for that user
-            storedData.push(data); // Add new data to the list
-            localStorage.setItem(`secureData_${username}`, JSON.stringify(storedData)); // Save back to localStorage
+            const storedData = getStoredData(username);
+            storedData.push(data);
+            localStorage.setItem(`secureData_${username}`, JSON.stringify(storedData));
         };
 
         // Function to load user-specific data into the table
         const loadData = (username) => {
-            const storedData = getStoredData(username); // Get the data specific to the logged-in user
-            dataTableBody.innerHTML = ""; // Clear the table body
-            storedData.forEach((row, index) => addRowToTable(index + 1, row)); // Add each row of data to the table
+            const storedData = getStoredData(username);
+            dataTableBody.innerHTML = "";
+            storedData.forEach((row, index) => addRowToTable(index + 1, row, index));
         };
 
         // Add a new row to the table
-        const addRowToTable = (index, data) => {
+        const addRowToTable = (index, data, dataIndex) => {
             const row = document.createElement("tr");
-            row.innerHTML = `<td>${index}</td><td>${data}</td>`;
+            row.innerHTML = `
+                <td>${index}</td>
+                <td>${data.value}</td>
+                <td>${data.timestamp}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteRow(${dataIndex})">Delete</button>
+                </td>
+            `;
             dataTableBody.appendChild(row);
+        };
+
+        // Delete a row of data (completely from localStorage)
+        const deleteRow = (dataIndex) => {
+            const username = document.getElementById("username").value;
+            const storedData = getStoredData(username);
+            storedData.splice(dataIndex, 1); // Remove the item from the array
+            localStorage.setItem(`secureData_${username}`, JSON.stringify(storedData)); // Save the updated data
+            loadData(username); // Reload the data
         };
 
         // Filter table data
@@ -181,12 +211,12 @@
             const newPassword = document.getElementById("newPassword").value.trim();
             const confirmPassword = document.getElementById("confirmPassword").value.trim();
 
-                // Validate username (must contain at least one letter and one number)
-    const usernameRegex = /^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$/;
-    if (!usernameRegex.test(newUsername)) {
-        alert("Username must be a combination of letters and numbers!");
-        return;
-    }
+            // Validate username (must contain at least one letter and one number)
+            const usernameRegex = /^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$/;
+            if (!usernameRegex.test(newUsername)) {
+                alert("Username must be a combination of letters and numbers!");
+                return;
+            }
 
             // Validate password (at least one uppercase, one number, one special character)
             const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).+$/;
@@ -209,31 +239,34 @@
         // Login functionality: check credentials and load data specific to the user
         loginForm.addEventListener("submit", (e) => {
             e.preventDefault();
-            const username = document.getElementById("username").value; // Get the username entered by the user
-            const password = document.getElementById("password").value; // Get the password entered by the user
-            const credentials = JSON.parse(localStorage.getItem("credentials")); // Get stored credentials
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const credentials = JSON.parse(localStorage.getItem("credentials"));
 
             if (credentials && username === credentials.username && password === credentials.password) {
-                loginSection.classList.add("d-none"); // Hide login section
-                dataSection.classList.remove("d-none"); // Show data section
-                loadData(username); // Load data specific to the logged-in user
+                loginSection.classList.add("d-none");
+                dataSection.classList.remove("d-none");
+                loadData(username);
             } else {
-                alert("Invalid credentials!"); // Show an alert for incorrect credentials
+                alert("Invalid credentials!");
             }
         });
 
-        // Add new data functionality: store data specific to the logged-in user
+        // Add new data functionality
         addRowBtn.addEventListener("click", () => {
-            const username = document.getElementById("username").value; // Get the username entered by the user
-            const newRowData = newRowInput.value.trim(); // Get the new data input
+            const username = document.getElementById("username").value;
+            const newRowData = newRowInput.value.trim();
 
             if (newRowData) {
-                const storedData = getStoredData(username); // Retrieve the data for that user
-                addRowToTable(storedData.length + 1, newRowData); // Add the new data to the table
-                saveData(username, newRowData); // Save the new data for the user
-                newRowInput.value = ""; // Clear the input field
+                const timestamp = new Date().toLocaleString();
+                const newData = { value: newRowData, timestamp: timestamp };
+                const storedData = getStoredData(username);
+                const newIndex = storedData.length + 1; // Start from 1
+                addRowToTable(newIndex, newData, storedData.length);
+                saveData(username, newData);
+                newRowInput.value = "";
             } else {
-                alert("Please enter valid data."); // Alert if no data is entered
+                alert("Please enter valid data.");
             }
         });
 
@@ -270,5 +303,8 @@
             registrationSection.classList.remove("d-none");
         });
     </script>
+        <footer>
+        <p>Created by <span class="highlight">Bishal Budhakshetri from Taplejung</span></p>
+    </footer>
 </body>
 </html>
