@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Data Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+        }
+        .card {
+            background-color: #1e1e1e;
+            border: 1px solid #333333;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .table-dark {
+            background-color: #1e1e1e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Registration Section -->
+        <div class="card" id="registrationSection">
+            <h3 class="text-center mb-4">Create Your Account</h3>
+            <form id="registrationForm">
+                <div class="mb-3">
+                    <label for="newUsername" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="newUsername" placeholder="Enter a username" required>
+                </div>
+                <div class="mb-3">
+                    <label for="newPassword" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="newPassword" placeholder="Enter a password" required>
+                </div>
+                <div class="mb-3">
+                    <label for="confirmPassword" class="form-label">Confirm Password</label>
+                    <input type="password" class="form-control" id="confirmPassword" placeholder="Confirm your password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Register</button>
+            </form>
+            <div class="text-center mt-3">
+                <button id="redirectToLoginBtn" class="btn btn-link">Already have an account? Login here.</button>
+            </div>
+        </div>
+
+        <!-- Login Section -->
+        <div class="card d-none" id="loginSection">
+            <h3 class="text-center mb-4">Secure Data Manager</h3>
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" placeholder="Enter username" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Login</button>
+            </form>
+            <div class="text-center mt-3">
+                <button id="redirectToCreateAccountBtn" class="btn btn-link">Create an account.</button>
+            </div>
+        </div>
+
+        <!-- Data Section -->
+        <div class="card d-none" id="dataSection">
+            <h3 class="text-center mb-4">Your Secure Data</h3>
+            <div class="mb-3">
+                <input type="text" id="newRow" class="form-control" placeholder="New Row Data (comma-separated)">
+            </div>
+            <button id="addRowBtn" class="btn btn-success w-100 mb-3">Add Row</button>
+            <div class="mb-3">
+                <input type="text" id="filterInput" class="form-control" placeholder="Filter Data">
+            </div>
+            <table id="dataTable" class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTableBody"></tbody>
+            </table>
+            <button id="changeCredentialsBtn" class="btn btn-secondary w-100 mt-3">Change Credentials</button>
+            <button id="logoutBtn" class="btn btn-danger w-100 mt-3">Logout</button>
+        </div>
+
+        <!-- Change Credentials Section -->
+        <div class="card d-none" id="changeCredentialsSection">
+            <h3 class="text-center mb-4">Change Credentials</h3>
+            <form id="changeCredentialsForm">
+                <div class="mb-3">
+                    <label for="newUsernameChange" class="form-label">New Username</label>
+                    <input type="text" class="form-control" id="newUsernameChange" placeholder="Enter new username">
+                </div>
+                <div class="mb-3">
+                    <label for="newPasswordChange" class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="newPasswordChange" placeholder="Enter new password">
+                </div>
+                <div class="mb-3">
+                    <label for="oldPasswordChange" class="form-label">Old Password</label>
+                    <input type="password" class="form-control" id="oldPasswordChange" placeholder="Enter old password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Change Credentials</button>
+            </form>
+            <button id="backToHomeBtn" class="btn btn-secondary w-100 mt-3">Back</button>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script>
+        const loginSection = document.getElementById("loginSection");
+        const registrationSection = document.getElementById("registrationSection");
+        const dataSection = document.getElementById("dataSection");
+        const changeCredentialsSection = document.getElementById("changeCredentialsSection");
+        const loginForm = document.getElementById("loginForm");
+        const registrationForm = document.getElementById("registrationForm");
+        const addRowBtn = document.getElementById("addRowBtn");
+        const logoutBtn = document.getElementById("logoutBtn");
+        const changeCredentialsBtn = document.getElementById("changeCredentialsBtn");
+        const dataTableBody = document.getElementById("dataTableBody");
+        const newRowInput = document.getElementById("newRow");
+        const filterInput = document.getElementById("filterInput");
+        const changeCredentialsForm = document.getElementById("changeCredentialsForm");
+        const backToHomeBtn = document.getElementById("backToHomeBtn");
+        const redirectToLoginBtn = document.getElementById("redirectToLoginBtn");
+        const redirectToCreateAccountBtn = document.getElementById("redirectToCreateAccountBtn");
+
+        // Function to get user-specific data from localStorage
+        const getStoredData = (username) => {
+            return JSON.parse(localStorage.getItem(`secureData_${username}`)) || [];
+        };
+
+        // Function to save user-specific data to localStorage
+        const saveData = (username, data) => {
+            const storedData = getStoredData(username); // Retrieve current data for that user
+            storedData.push(data); // Add new data to the list
+            localStorage.setItem(`secureData_${username}`, JSON.stringify(storedData)); // Save back to localStorage
+        };
+
+        // Function to load user-specific data into the table
+        const loadData = (username) => {
+            const storedData = getStoredData(username); // Get the data specific to the logged-in user
+            dataTableBody.innerHTML = ""; // Clear the table body
+            storedData.forEach((row, index) => addRowToTable(index + 1, row)); // Add each row of data to the table
+        };
+
+        // Add a new row to the table
+        const addRowToTable = (index, data) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td>${index}</td><td>${data}</td>`;
+            dataTableBody.appendChild(row);
+        };
+
+        // Filter table data
+        const filterTable = () => {
+            const filter = filterInput.value.toLowerCase();
+            const rows = dataTableBody.querySelectorAll("tr");
+            rows.forEach((row) => {
+                const dataCell = row.querySelector("td:nth-child(2)");
+                if (dataCell.textContent.toLowerCase().includes(filter)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        };
+
+        // Registration functionality
+        registrationForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const newUsername = document.getElementById("newUsername").value.trim();
+            const newPassword = document.getElementById("newPassword").value.trim();
+            const confirmPassword = document.getElementById("confirmPassword").value.trim();
+
+                // Validate username (must contain at least one letter and one number)
+    const usernameRegex = /^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$/;
+    if (!usernameRegex.test(newUsername)) {
+        alert("Username must be a combination of letters and numbers!");
+        return;
+    }
+
+            // Validate password (at least one uppercase, one number, one special character)
+            const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).+$/;
+            if (!passwordRegex.test(newPassword)) {
+                alert("Password must have at least one uppercase letter, one number, and one special character.");
+                return;
+            }
+
+            if (newPassword === confirmPassword) {
+                const newCredentials = { username: newUsername, password: newPassword };
+                localStorage.setItem("credentials", JSON.stringify(newCredentials));
+                alert("Account created successfully. Please log in.");
+                registrationSection.classList.add("d-none");
+                loginSection.classList.remove("d-none");
+            } else {
+                alert("Passwords do not match!");
+            }
+        });
+
+        // Login functionality: check credentials and load data specific to the user
+        loginForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const username = document.getElementById("username").value; // Get the username entered by the user
+            const password = document.getElementById("password").value; // Get the password entered by the user
+            const credentials = JSON.parse(localStorage.getItem("credentials")); // Get stored credentials
+
+            if (credentials && username === credentials.username && password === credentials.password) {
+                loginSection.classList.add("d-none"); // Hide login section
+                dataSection.classList.remove("d-none"); // Show data section
+                loadData(username); // Load data specific to the logged-in user
+            } else {
+                alert("Invalid credentials!"); // Show an alert for incorrect credentials
+            }
+        });
+
+        // Add new data functionality: store data specific to the logged-in user
+        addRowBtn.addEventListener("click", () => {
+            const username = document.getElementById("username").value; // Get the username entered by the user
+            const newRowData = newRowInput.value.trim(); // Get the new data input
+
+            if (newRowData) {
+                const storedData = getStoredData(username); // Retrieve the data for that user
+                addRowToTable(storedData.length + 1, newRowData); // Add the new data to the table
+                saveData(username, newRowData); // Save the new data for the user
+                newRowInput.value = ""; // Clear the input field
+            } else {
+                alert("Please enter valid data."); // Alert if no data is entered
+            }
+        });
+
+        // Filter data on input
+        filterInput.addEventListener("input", filterTable);
+
+        // Logout functionality
+        logoutBtn.addEventListener("click", () => {
+            dataSection.classList.add("d-none");
+            loginSection.classList.remove("d-none");
+        });
+
+        // Change Credentials functionality
+        changeCredentialsBtn.addEventListener("click", () => {
+            dataSection.classList.add("d-none");
+            changeCredentialsSection.classList.remove("d-none");
+        });
+
+        // Back to Home Button
+        backToHomeBtn.addEventListener("click", () => {
+            changeCredentialsSection.classList.add("d-none");
+            dataSection.classList.remove("d-none");
+        });
+
+        // Redirect to login section from registration section
+        redirectToLoginBtn.addEventListener("click", () => {
+            registrationSection.classList.add("d-none");
+            loginSection.classList.remove("d-none");
+        });
+
+        // Redirect to registration section from login section
+        redirectToCreateAccountBtn.addEventListener("click", () => {
+            loginSection.classList.add("d-none");
+            registrationSection.classList.remove("d-none");
+        });
+    </script>
+</body>
+</html>
